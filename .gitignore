@@ -1,0 +1,60 @@
+# 1. Environment & Secrets (Keamanan)
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+!.env.example
+
+# 2. Python Backend (engine/)
+# Virtual Environment
+.venv/
+env/
+venv/
+ENV/
+
+# Python Cache & Bytecode
+**/__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# 3. Next.js Frontend (web/)
+# Dependencies
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# Next.js Build Outputs & Cache
+.next/
+out/
+build/
+dist/
+
+# TypeScript Build Info
+*.tsbuildinfo
+next-env.d.ts
+
+# Vercel
+.vercel
+
+# 4. Media Output & Temporary Video Files
+**/generated_clips/
+**/output_clips/
+public/generated_clips/*
+!public/generated_clips/.gitkeep
+
+# File media & subtitle sementara
+*.mp4
+*.m4a
+*.webm
+*.part
+*.ass
+*.srt
+
+# 5. OS & Editor Cache
+.DS_Store
+Thumbs.db
+*.pem
