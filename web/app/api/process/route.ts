@@ -35,7 +35,7 @@ export async function POST(req: NextRequest) {
       "--url",
       url,
       "--layout",
-      layout || "gaming",
+      layout,
       "--mode",
       mode,
       "--interval",
