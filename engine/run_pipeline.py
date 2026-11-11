@@ -19,7 +19,7 @@ GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 def main():
     parser = argparse.ArgumentParser(description="AutoClip Pipeline Orchestrator")
     parser.add_argument("--url", required=True)
-    parser.add_argument("--layout", default="gaming")
+    parser.add_argument("--layout", default="splitCenter")
     parser.add_argument("--mode", default="ai", choices=["ai", "interval"])
     parser.add_argument("--interval", type=int, default=2)
     parser.add_argument("--clips", type=int, default=0)
