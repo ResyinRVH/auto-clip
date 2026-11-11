@@ -11,14 +11,18 @@ def download_full_video(clean_url: str, output_path: str) -> str:
     if os.path.exists(output_path) and os.path.getsize(output_path) > 0:
         return output_path
 
-    print(f"📥 Mengunduh video master utuh sekali jalan...")
+    print(f"Mengunduh video master utuh sekali jalan...")
     cmd = get_ytdlp_cmd() + [
         "--no-part",
         "--force-overwrites",
-        "--extractor-args", "youtube:player_client=android,web",
-        "-f", "bestvideo[height<=1080][ext=mp4]+bestaudio[ext=m4a]/best[height<=1080]/best",
-        "--merge-output-format", "mp4",
-        "-o", output_path,
+        "--extractor-args",
+        "youtube:player_client=android,web",
+        "-f",
+        "bestvideo[height<=1080][ext=mp4]+bestaudio[ext=m4a]/best[height<=1080]/best",
+        "--merge-output-format",
+        "mp4",
+        "-o",
+        output_path,
         clean_url,
     ]
     proc = subprocess.run(cmd, capture_output=True, text=True)
@@ -35,10 +39,17 @@ def get_fastest_encoder() -> tuple[str, str]:
     """
     try:
         test_cmd = [
-            "ffmpeg", "-y",
-            "-f", "lavfi", "-i", "color=c=black:s=256x256:d=0.1",
-            "-c:v", "h264_nvenc",
-            "-f", "null", "-"
+            "ffmpeg",
+            "-y",
+            "-f",
+            "lavfi",
+            "-i",
+            "color=c=black:s=256x256:d=0.1",
+            "-c:v",
+            "h264_nvenc",
+            "-f",
+            "null",
+            "-",
         ]
         res = subprocess.run(test_cmd, capture_output=True, text=True)
         if res.returncode == 0:
@@ -75,7 +86,7 @@ def render_clip_from_local(
     ass_escaped = ass_path.replace("\\", "/").replace(":", "\\:")
     sub_filter = f"ass='{ass_escaped}'[outv]" if has_subtitles else "null[outv]"
 
-    if layout == "gaming":
+    if layout == "splitPotrait":
         vf = (
             f"[0:v]split=2[cam_in][game_in];"
             f"[cam_in]crop=iw*0.28:ih*0.42:iw*0.02:ih*0.56,scale=1080:800:force_original_aspect_ratio=increase,crop=1080:800[top_cam];"
@@ -83,13 +94,19 @@ def render_clip_from_local(
             f"[top_cam][bottom_game]vstack=inputs=2[stacked];"
             f"[stacked]{sub_filter}"
         )
-    elif layout == "talking_head":
+    elif layout == "landscape":
         vf = (
             f"[0:v]split=2[bg][fg];"
             f"[bg]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,boxblur=15:3[bgblur];"
             f"[fg]scale=1080:-1[mainvid];"
             f"[bgblur][mainvid]overlay=(W-w)/2:(H-h)/2[stacked];"
             f"[stacked]{sub_filter}"
+        )
+    elif layout == "centerPotrait":
+        vf = (
+            f"[0:v]scale=1080:1920:force_original_aspect_ratio=increase,"
+            f"crop=1080:1920:(in_w-1080)/2:(in_h-1920)/2[cropped];"
+            f"[cropped]{sub_filter}"
         )
     else:
         vf = f"[0:v]scale=-1:1920,crop=1080:1920:(iw-1080)/2:0[stacked];[stacked]{sub_filter}"
@@ -99,22 +116,34 @@ def render_clip_from_local(
     ff_cmd = [
         "ffmpeg",
         "-y",
-        "-ss", start_time,
-        "-to", end_time,
-        "-i", master_video_path,
-        "-filter_complex", vf,
-        "-map", "[outv]",
-        "-map", "0:a?",
-        "-c:v", encoder,
-        "-preset", preset,
-        "-c:a", "aac",
-        "-b:a", "128k",
+        "-ss",
+        start_time,
+        "-to",
+        end_time,
+        "-i",
+        master_video_path,
+        "-filter_complex",
+        vf,
+        "-map",
+        "[outv]",
+        "-map",
+        "0:a?",
+        "-c:v",
+        encoder,
+        "-preset",
+        preset,
+        "-c:a",
+        "aac",
+        "-b:a",
+        "128k",
         final_output,
     ]
 
     proc = subprocess.run(ff_cmd, capture_output=True, text=True)
     if proc.returncode != 0:
-        raise RuntimeError(f"Gagal render FFmpeg part {index}: {proc.stderr or proc.stdout}")
+        raise RuntimeError(
+            f"Gagal render FFmpeg part {index}: {proc.stderr or proc.stdout}"
+        )
 
     if os.path.exists(ass_path):
         os.remove(ass_path)
