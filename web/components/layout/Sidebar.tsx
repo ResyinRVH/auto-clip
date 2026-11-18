@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, Scissors } from "lucide-react";
+import { Home, Scissors, Brush } from "lucide-react";
 
 interface NavItem {
   label: string;
@@ -21,20 +21,25 @@ const navItems: NavItem[] = [
     href: "/clip",
     icon: Scissors,
   },
+  {
+    label: "Remove Background",
+    href: "/remove-bg",
+    icon: Brush,
+  },
 ];
 
 export function Sidebar() {
   const pathname = usePathname();
 
   return (
-    <aside className="w-100 h-[calc(100vh-2rem)] bg-[#F9F9FB] border border-neutral-200/70 rounded-3xl p-6 flex flex-col justify-between select-none">
+    <aside className="min-h-[calc(100vh-2rem)] bg-[#F9F9FB] border border-neutral-200/70 rounded-r-3xl p-6 flex flex-col justify-between select-none">
       <div className="space-y-10">
         <div className="flex items-center gap-3.5 px-2">
           <div className="w-12 h-12 rounded-full bg-neutral-950 flex items-center justify-center text-white text-[11px] font-semibold tracking-wider shadow-sm">
             <Scissors/>
           </div>
           <span className="text-2xl font-bold tracking-tight text-neutral-900">
-            Klip
+            Creator Studio
           </span>
         </div>
 
