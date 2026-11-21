@@ -11,8 +11,6 @@ interface ConfigurationClipProps {
   setDurationSec: (d: number) => void;
   intervalMinutes: number;
   setIntervalMinutes: (m: number) => void;
-  autoSubtitle: boolean;
-  setAutoSubtitle: (val: boolean) => void;
 }
 
 export function ConfigurationClip({
@@ -23,8 +21,6 @@ export function ConfigurationClip({
   setDurationSec,
   intervalMinutes,
   setIntervalMinutes,
-  autoSubtitle,
-  setAutoSubtitle,
 }: ConfigurationClipProps) {
   return (
     <section className="space-y-3">
@@ -35,7 +31,9 @@ export function ConfigurationClip({
       <div className="bg-white border border-neutral-300 rounded-3xl p-6 shadow-sm">
         <div className="flex flex-wrap items-center gap-10 md:gap-14">
           <div className="space-y-2">
-            <span className="text-xs text-neutral-600 font-medium">Number of Clip</span>
+            <span className="text-xs text-neutral-600 font-medium">
+              Number of Clip
+            </span>
             <div className="flex items-center gap-1">
               {[1, 2, 3].map((num) => (
                 <button
@@ -58,7 +56,9 @@ export function ConfigurationClip({
                   onChange={(e) => setMaxClips(Number(e.target.value))}
                   className="w-9 h-9 border border-neutral-300 rounded-lg text-xs font-semibold appearance-none bg-white text-center cursor-pointer focus:outline-none pl-1"
                 >
-                  <option value="custom" disabled hidden>v</option>
+                  <option value="custom" disabled hidden>
+                    v
+                  </option>
                   <option value={4}>4</option>
                   <option value={5}>5</option>
                   <option value={0}>All</option>
@@ -122,35 +122,6 @@ export function ConfigurationClip({
               </div>
             )}
           </div>
-
-          <div className="space-y-2">
-            <span className="text-xs text-neutral-600 font-medium">Auto Subtitle</span>
-            <div className="flex items-center gap-1">
-              <button
-                type="button"
-                onClick={() => setAutoSubtitle(true)}
-                className={`px-3.5 h-9 rounded-lg border text-xs font-semibold transition-all ${
-                  autoSubtitle
-                    ? "border-neutral-900 bg-neutral-900 text-white"
-                    : "border-neutral-300 text-neutral-700 hover:bg-neutral-100"
-                }`}
-              >
-                Yes
-              </button>
-              <button
-                type="button"
-                onClick={() => setAutoSubtitle(false)}
-                className={`px-3.5 h-9 rounded-lg border text-xs font-semibold transition-all ${
-                  !autoSubtitle
-                    ? "border-neutral-900 bg-neutral-900 text-white"
-                    : "border-neutral-300 text-neutral-700 hover:bg-neutral-100"
-                }`}
-              >
-                No
-              </button>
-            </div>
-          </div>
-
         </div>
       </div>
     </section>
