@@ -5,7 +5,6 @@ import sys
 from core.subtitle import generate_ass_subtitles
 from core.youtube import get_ytdlp_cmd
 
-
 def download_full_video(clean_url: str, output_path: str) -> str:
     """Mengunduh video master sekali saja ke storage lokal."""
     if os.path.exists(output_path) and os.path.getsize(output_path) > 0:
@@ -30,7 +29,6 @@ def download_full_video(clean_url: str, output_path: str) -> str:
         err_msg = proc.stderr.strip() or proc.stdout.strip()
         raise RuntimeError(f"Gagal unduh video master: {err_msg}")
     return output_path
-
 
 def get_fastest_encoder() -> tuple[str, str]:
     """
@@ -59,7 +57,6 @@ def get_fastest_encoder() -> tuple[str, str]:
 
     return "libx264", "ultrafast"
 
-
 def render_clip_from_local(
     master_video_path: str,
     start_time: str,
@@ -69,22 +66,33 @@ def render_clip_from_local(
     layout: str,
     output_dir: str,
     raw_transcript: list,
+    subtitle_style: str = "bold-yellow",
 ) -> str:
     clean_title = re.sub(r"[^a-zA-Z0-9_]", "", title)
     ass_path = os.path.join(output_dir, f"temp_sub_{index}.ass")
     final_output = os.path.join(output_dir, f"clip_{index}_{clean_title}.mp4")
 
     has_subtitles = False
-    if raw_transcript:
+    if raw_transcript and subtitle_style != "none":
         try:
-            generate_ass_subtitles(raw_transcript, start_time, end_time, ass_path)
+            generate_ass_subtitles(
+                raw_transcript,
+                start_time,
+                end_time,
+                ass_path,
+                style=subtitle_style,
+            )
             if os.path.exists(ass_path) and os.path.getsize(ass_path) > 0:
                 has_subtitles = True
         except Exception:
             pass
 
     ass_escaped = ass_path.replace("\\", "/").replace(":", "\\:")
-    sub_filter = f"ass='{ass_escaped}'[outv]" if has_subtitles else "null[outv]"
+    sub_filter = (
+        f"subtitles='{ass_escaped}':original_size=1080x1920[outv]"
+        if has_subtitles
+        else "null[outv]"
+    )
 
     if layout == "splitPotrait":
         vf = (
