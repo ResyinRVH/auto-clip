@@ -20,6 +20,11 @@ def main():
     parser = argparse.ArgumentParser(description="AutoClip Pipeline Orchestrator")
     parser.add_argument("--url", required=True)
     parser.add_argument("--layout", default="splitCenter")
+    parser.add_argument(
+        "--subtitle_style",
+        default="bold-yellow",
+        choices=["bold-yellow", "clean-white", "boxed-dark", "none"],
+    )
     parser.add_argument("--mode", default="ai", choices=["ai", "interval"])
     parser.add_argument("--interval", type=int, default=2)
     parser.add_argument("--clips", type=int, default=0)
@@ -42,20 +47,24 @@ def main():
         if args.mode == "interval":
             interval_sec = args.interval * 60
             total_duration = get_video_duration(clean_url)
-            
+
             limit_clips = args.clips if args.clips > 0 else None
-            
+
             clips_to_process = generate_interval_segments(
                 total_duration,
                 interval_seconds=interval_sec,
                 max_clips=limit_clips,
             )
             if not clips_to_process:
-                raise ValueError("Durasi video tidak mencukupi untuk interval yang dipilih.")
+                raise ValueError(
+                    "Durasi video tidak mencukupi untuk interval yang dipilih."
+                )
         else:
             if not transcript_text:
-                raise ValueError("Transkrip video tidak tersedia. Tidak dapat menggunakan AI highlight.")
-            
+                raise ValueError(
+                    "Transkrip video tidak tersedia. Tidak dapat menggunakan AI highlight."
+                )
+
             ai_clips = args.clips if args.clips > 0 else 1
             clips_to_process = extract_highlights(
                 GEMINI_API_KEY, transcript_text, ai_clips, args.min_dur, args.max_dur
@@ -75,18 +84,20 @@ def main():
                 layout=args.layout,
                 output_dir=args.outdir,
                 raw_transcript=raw_transcript,
+                subtitle_style=args.subtitle_style,
             )
-            results.append({
-                "title": clip["title"],
-                "start": clip["start_time"],
-                "end": clip["end_time"],
-                "file": filename,
-            })
+            results.append(
+                {
+                    "title": clip["title"],
+                    "start": clip["start_time"],
+                    "end": clip["end_time"],
+                    "file": filename,
+                }
+            )
 
         if master_video_path and os.path.exists(master_video_path):
             os.remove(master_video_path)
 
-        
         print(json.dumps({"success": True, "clips": results}))
 
     except Exception as exc:
