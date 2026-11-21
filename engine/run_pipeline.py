@@ -10,7 +10,11 @@ if CURRENT_DIR not in sys.path:
 
 from core.youtube import get_video_id, get_video_duration, get_raw_transcript_data
 from core.segmenter import generate_interval_segments, extract_highlights
-from core.renderer import download_full_video, render_clip_from_local
+from core.renderer import (
+    download_full_video,
+    render_clip_from_local,
+    rerender_clip_subtitles,
+)
 
 load_dotenv()
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
@@ -18,24 +22,66 @@ GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
 def main():
     parser = argparse.ArgumentParser(description="AutoClip Pipeline Orchestrator")
-    parser.add_argument("--url", required=True)
-    parser.add_argument("--layout", default="splitCenter")
+    parser.add_argument(
+        "--rerender", action="store_true", help="Mode fast re-render subtitle"
+    )
+    parser.add_argument("--url", default="")
+    parser.add_argument("--layout", default="splitPotrait")
     parser.add_argument(
         "--subtitle_style",
         default="bold-yellow",
         choices=["bold-yellow", "clean-white", "boxed-dark", "none"],
     )
+    parser.add_argument("--pos_x", type=int, default=None)
+    parser.add_argument("--pos_y", type=int, default=None)
     parser.add_argument("--mode", default="ai", choices=["ai", "interval"])
     parser.add_argument("--interval", type=int, default=2)
     parser.add_argument("--clips", type=int, default=0)
     parser.add_argument("--min_dur", type=int, default=30)
     parser.add_argument("--max_dur", type=int, default=60)
-    parser.add_argument("--outdir", required=True)
+    parser.add_argument("--outdir", default="")
+    parser.add_argument("--raw_file", default="")
+    parser.add_argument("--output_file", default="")
+    parser.add_argument("--subtitles_json", default="")
+
     args = parser.parse_args()
+
+    if args.rerender:
+        try:
+            if not args.raw_file or not args.output_file:
+                raise ValueError(
+                    "--raw_file dan --output_file wajib diisi pada mode --rerender."
+                )
+
+            if args.subtitles_json:
+                if os.path.exists(args.subtitles_json):
+                    with open(args.subtitles_json, "r", encoding="utf-8") as f:
+                        segments = json.load(f)
+                else:
+                    segments = json.loads(args.subtitles_json)
+            else:
+                segments = []
+
+            updated_file = rerender_clip_subtitles(
+                raw_video_path=args.raw_file,
+                output_video_path=args.output_file,
+                segments=segments,
+                subtitle_style=args.subtitle_style,
+                pos_x=args.pos_x,
+                pos_y=args.pos_y,
+            )
+            print(json.dumps({"success": True, "file": updated_file}))
+            return
+        except Exception as exc:
+            print(json.dumps({"success": False, "error": str(exc)}))
+            sys.exit(1)
 
     master_video_path = None
 
     try:
+        if not args.url or not args.outdir:
+            raise ValueError("--url dan --outdir wajib diisi.")
+
         os.makedirs(args.outdir, exist_ok=True)
         video_id = get_video_id(args.url)
         if not video_id:
@@ -75,7 +121,7 @@ def main():
 
         results = []
         for idx, clip in enumerate(clips_to_process, 1):
-            filename = render_clip_from_local(
+            filename, raw_filename, clip_subtitles = render_clip_from_local(
                 master_video_path=master_video_path,
                 start_time=clip["start_time"],
                 end_time=clip["end_time"],
@@ -85,6 +131,8 @@ def main():
                 output_dir=args.outdir,
                 raw_transcript=raw_transcript,
                 subtitle_style=args.subtitle_style,
+                pos_x=args.pos_x,
+                pos_y=args.pos_y,
             )
             results.append(
                 {
@@ -92,6 +140,8 @@ def main():
                     "start": clip["start_time"],
                     "end": clip["end_time"],
                     "file": filename,
+                    "rawFile": raw_filename,
+                    "subtitles": clip_subtitles,
                 }
             )
 
