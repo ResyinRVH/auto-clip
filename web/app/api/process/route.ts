@@ -3,22 +3,41 @@ import { spawn } from "child_process";
 import path from "path";
 import fs from "fs";
 
+const ALLOWED_SUBTITLE_STYLES = [
+  "bold-yellow",
+  "clean-white",
+  "boxed-dark",
+  "none",
+] as const;
+
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { url, layout,mode = "ai",intervalMinutes = 2, maxClips, minDuration, maxDuration } = body;
+    const {
+      url,
+      layout,
+      subtitleStyle = "bold-yellow",
+      mode = "ai",
+      intervalMinutes = 2,
+      maxClips,
+      minDuration,
+      maxDuration,
+    } = body;
 
     if (!url) {
       return NextResponse.json({ error: "URL wajib diisi" }, { status: 400 });
     }
 
+    const safeSubtitleStyle = ALLOWED_SUBTITLE_STYLES.includes(subtitleStyle)
+      ? subtitleStyle
+      : "bold-yellow";
     const rootDir = path.resolve(process.cwd(), "..");
     const pythonExecutable = path.join(
       rootDir,
       "engine",
       ".venv",
       "Scripts",
-      "python.exe"
+      "python.exe",
     );
     const scriptPath = path.join(rootDir, "engine", "run_pipeline.py");
     const outputDir = path.join(process.cwd(), "public", "generated_clips");
@@ -27,15 +46,16 @@ export async function POST(req: NextRequest) {
       fs.mkdirSync(outputDir, { recursive: true });
     }
 
-    const clipsLimit = mode === "interval"
-      ? String(maxClips || 0)
-      : String(maxClips || 3);
+    const clipsLimit =
+      mode === "interval" ? String(maxClips || 0) : String(maxClips || 3);
     const args = [
       scriptPath,
       "--url",
       url,
       "--layout",
       layout,
+      "--subtitle_style",
+      safeSubtitleStyle,
       "--mode",
       mode,
       "--interval",
@@ -91,8 +111,8 @@ export async function POST(req: NextRequest) {
               error: "Gagal memulai subproses Python",
               details: err.message,
             },
-            { status: 500 }
-          )
+            { status: 500 },
+          ),
         );
       });
 
@@ -107,8 +127,8 @@ export async function POST(req: NextRequest) {
                 error: "Gagal memproses pipeline Python",
                 details: stderrData || stdoutData,
               },
-              { status: 500 }
-            )
+              { status: 500 },
+            ),
           );
           return;
         }
@@ -122,8 +142,7 @@ export async function POST(req: NextRequest) {
               try {
                 parsed = JSON.parse(jsonMatches[i]);
                 break;
-              } catch {
-              }
+              } catch {}
             }
           }
 
@@ -135,8 +154,7 @@ export async function POST(req: NextRequest) {
                 try {
                   parsed = JSON.parse(line);
                   break;
-                } catch {
-                }
+                } catch {}
               }
             }
           }
@@ -147,8 +165,7 @@ export async function POST(req: NextRequest) {
 
           safeResolve(NextResponse.json(parsed));
         } catch (err: unknown) {
-          const message =
-            err instanceof Error ? err.message : "Parsing error";
+          const message = err instanceof Error ? err.message : "Parsing error";
           safeResolve(
             NextResponse.json(
               {
@@ -156,15 +173,17 @@ export async function POST(req: NextRequest) {
                 details: message,
                 raw: stdoutData,
               },
-              { status: 500 }
-            )
+              { status: 500 },
+            ),
           );
         }
       });
     });
   } catch (error: unknown) {
     const errMessage =
-      error instanceof Error ? error.message : "Terjadi kesalahan server internal";
+      error instanceof Error
+        ? error.message
+        : "Terjadi kesalahan server internal";
     return NextResponse.json({ error: errMessage }, { status: 500 });
   }
 }
