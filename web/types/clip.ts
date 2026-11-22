@@ -7,4 +7,21 @@ export interface ClipResult {
   start: string;
   end: string;
   file: string;
+  rawFile?: string;
+  subtitles?: SubtitleSegment[];
+  subtitleStyle?: SubtitleStyleOption;
+  posX?: number;
+  posY?: number;
+  version?: number;
+}
+
+export interface SubtitleSegment {
+  start: number;
+  end: number;
+  text: string;
+}
+
+export interface SubtitlePosition {
+  x: number;
+  y: number;
 }
