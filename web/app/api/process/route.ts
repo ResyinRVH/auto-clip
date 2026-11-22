@@ -17,6 +17,8 @@ export async function POST(req: NextRequest) {
       url,
       layout,
       subtitleStyle = "bold-yellow",
+      posX,
+      posY,
       mode = "ai",
       intervalMinutes = 2,
       maxClips,
@@ -69,6 +71,12 @@ export async function POST(req: NextRequest) {
       "--outdir",
       outputDir,
     ];
+
+    if (typeof posX === "number" && typeof posY === "number") {
+      const pixelX = Math.round((Math.max(0, Math.min(100, posX)) / 100) * 1080);
+      const pixelY = Math.round((Math.max(0, Math.min(100, posY)) / 100) * 1920);
+      args.push("--pos_x", String(pixelX), "--pos_y", String(pixelY));
+    }
 
     return new Promise<NextResponse>((resolve) => {
       let hasResolved = false;
