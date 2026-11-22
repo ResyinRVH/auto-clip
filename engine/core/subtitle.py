@@ -3,15 +3,24 @@ import re
 
 SUBTITLE_PRESETS = {
     "bold-yellow": {
-        "style_line": "Style: TikTokStyle,Arial,115,&H0015CCFA,&H000000FF,&H00000000,&H80000000,-1,0,0,0,100,100,1,0,1,9,4,5,60,60,0,1",
+        "base_font_size": 115,
+        "base_outline": 9,
+        "base_shadow": 4,
+        "style_template": "Style: TikTokStyle,Arial,{font_size},&H0015CCFA,&H000000FF,&H00000000,&H80000000,-1,0,0,0,100,100,1,0,1,{outline},{shadow},5,60,60,0,1",
         "uppercase": True,
     },
     "clean-white": {
-        "style_line": "Style: TikTokStyle,Arial,54,&H00FFFFFF,&H000000FF,&H00000000,&H80000000,-1,0,0,0,100,100,0.5,0,1,4,3,2,60,60,380,1",
+        "base_font_size": 54,
+        "base_outline": 4,
+        "base_shadow": 3,
+        "style_template": "Style: TikTokStyle,Arial,{font_size},&H00FFFFFF,&H000000FF,&H00000000,&H80000000,-1,0,0,0,100,100,0.5,0,1,{outline},{shadow},2,60,60,380,1",
         "uppercase": False,
     },
     "boxed-dark": {
-        "style_line": "Style: TikTokStyle,Arial,56,&H00FFFFFF,&H000000FF,&H33000000,&H33000000,-1,0,0,0,100,100,0.5,0,3,16,0,2,60,60,420,1",
+        "base_font_size": 56,
+        "base_outline": 16,
+        "base_shadow": 0,
+        "style_template": "Style: TikTokStyle,Arial,{font_size},&H00FFFFFF,&H000000FF,&H33000000,&H33000000,-1,0,0,0,100,100,0.5,0,3,{outline},{shadow},2,60,60,420,1",
         "uppercase": True,
     },
 }
@@ -51,21 +60,62 @@ def parse_time_to_seconds(time_str: str) -> float:
     return float(time_str)
 
 
+def normalize_non_overlapping_segments(segments: list[dict]) -> list[dict]:
+    """
+    Mengurutkan segmen secara kronologis, membersihkan noise tag seperti [Musik],
+    dan memotong waktu selesai (end) jika menabrak waktu mulai (start) segmen
+    berikutnya agar subtitle tidak pernah muncul double atau bertumpuk.
+    """
+    cleaned = []
+    for seg in segments:
+        text = re.sub(r"\[[^\]]*\]", "", str(seg.get("text", "")))
+        text = re.sub(r"\s+", " ", text).strip()
+        start = round(max(0.0, float(seg.get("start", 0))), 2)
+        end = round(float(seg.get("end", 0)), 2)
+        if text and end > start:
+            cleaned.append({"start": start, "end": end, "text": text})
+
+    cleaned.sort(key=lambda item: item["start"])
+
+    resolved = []
+    for i, current in enumerate(cleaned):
+        start = current["start"]
+        end = current["end"]
+
+        if i + 1 < len(cleaned):
+            next_start = cleaned[i + 1]["start"]
+            if end > next_start:
+                end = round(max(start + 0.15, next_start - 0.02), 2)
+                if end > next_start:
+                    end = next_start
+
+        if end > start:
+            resolved.append(
+                {
+                    "start": start,
+                    "end": end,
+                    "text": current["text"],
+                }
+            )
+
+    return resolved
+
+
 def extract_clip_subtitles(
     raw_transcript: list,
     start_time_str: str,
     end_time_str: str,
 ) -> list[dict]:
     """
-    Menyaring transkrip ke dalam rentang klip dan mengembalikan list segmen
-    relatif terhadap 0.0 detik awal klip: [{"start": 0.4, "end": 3.1, "text": "..."}]
+    Menyaring transkrip ke dalam rentang klip, menormalkan overlap timing,
+    dan mengembalikan list segmen relatif terhadap 0.0 detik awal klip.
     """
     if not raw_transcript:
         return []
 
     clip_start = parse_time_to_seconds(start_time_str)
     clip_end = parse_time_to_seconds(end_time_str)
-    segments = []
+    raw_segments = []
 
     for item in raw_transcript:
         start_sec = getattr(item, "start", None)
@@ -91,7 +141,7 @@ def extract_clip_subtitles(
             rel_start = round(max(0.0, start_sec - clip_start), 2)
             rel_end = round(min(clip_end - clip_start, item_end - clip_start), 2)
             if rel_end > rel_start:
-                segments.append(
+                raw_segments.append(
                     {
                         "start": rel_start,
                         "end": rel_end,
@@ -99,7 +149,7 @@ def extract_clip_subtitles(
                     }
                 )
 
-    return segments
+    return normalize_non_overlapping_segments(raw_segments)
 
 
 def write_ass_from_segments(
@@ -108,15 +158,31 @@ def write_ass_from_segments(
     style: str = "bold-yellow",
     pos_x: int | None = None,
     pos_y: int | None = None,
+    font_scale: float = 1.0,
 ) -> bool:
     """
-    Menulis file .ass dari daftar segmen [{"start", "end", "text"}]
-    dengan dukungan gaya preset serta koordinat kustom (pos_x, pos_y) pada kanvas 1080x1920.
+    Menulis file .ass dari daftar segmen dengan pencegahan overlap,
+    koordinat kustom (pos_x, pos_y), serta skala ukuran font dinamis (font_scale).
     """
     if style == "none" or not segments:
         return False
 
+    normalized = normalize_non_overlapping_segments(segments)
+    if not normalized:
+        return False
+
     preset = SUBTITLE_PRESETS.get(style, SUBTITLE_PRESETS["bold-yellow"])
+    safe_scale = max(0.4, min(2.5, float(font_scale or 1.0)))
+
+    scaled_font_size = max(18, round(preset["base_font_size"] * safe_scale))
+    scaled_outline = max(1, round(preset["base_outline"] * safe_scale))
+    scaled_shadow = max(0, round(preset["base_shadow"] * safe_scale))
+
+    style_line = preset["style_template"].format(
+        font_size=scaled_font_size,
+        outline=scaled_outline,
+        shadow=scaled_shadow,
+    )
 
     header = f"""[Script Info]
 ScriptType: v4.00+
@@ -126,7 +192,7 @@ ScaledBorderAndShadow: yes
 
 [V4+ Styles]
 Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
-{preset["style_line"]}
+{style_line}
 
 [Events]
 Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
@@ -139,21 +205,12 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
         pos_tag = f"{{\\an5\\pos({clamped_x},{clamped_y})}}"
 
     dialogue_lines = []
-    for seg in segments:
-        rel_start = float(seg.get("start", 0))
-        rel_end = float(seg.get("end", 0))
-        text = str(seg.get("text", "")).replace("\n", " ").strip()
-        if not text or rel_end <= rel_start:
-            continue
-
-        start_stamp = seconds_to_ass_stamp(rel_start)
-        end_stamp = seconds_to_ass_stamp(rel_end)
-        formatted_text = text.upper() if preset["uppercase"] else text
+    for seg in normalized:
+        start_stamp = seconds_to_ass_stamp(seg["start"])
+        end_stamp = seconds_to_ass_stamp(seg["end"])
+        formatted_text = seg["text"].upper() if preset["uppercase"] else seg["text"]
         line = f"Dialogue: 0,{start_stamp},{end_stamp},TikTokStyle,,0,0,0,,{pos_tag}{formatted_text}"
         dialogue_lines.append(line)
-
-    if not dialogue_lines:
-        return False
 
     with open(output_ass_path, "w", encoding="utf-8") as f:
         f.write(header)
@@ -170,9 +227,10 @@ def generate_ass_subtitles(
     style: str = "bold-yellow",
     pos_x: int | None = None,
     pos_y: int | None = None,
+    font_scale: float = 1.0,
 ) -> list[dict]:
     """
-    Menyaring dialog subtitle yang masuk dalam rentang klip,
+    Menyaring dialog subtitle yang masuk dalam rentang klip, mencegah overlap,
     menulis file .ass jika style != 'none', dan mengembalikan daftar segmen relatif.
     """
     segments = extract_clip_subtitles(raw_transcript, start_time_str, end_time_str)
@@ -183,5 +241,6 @@ def generate_ass_subtitles(
             style=style,
             pos_x=pos_x,
             pos_y=pos_y,
+            font_scale=font_scale,
         )
     return segments
