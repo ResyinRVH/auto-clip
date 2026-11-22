@@ -6,6 +6,7 @@ import uuid
 from core.subtitle import generate_ass_subtitles, write_ass_from_segments
 from core.youtube import get_ytdlp_cmd
 
+
 def download_full_video(clean_url: str, output_path: str) -> str:
     """Mengunduh video master sekali saja ke storage lokal."""
     if os.path.exists(output_path) and os.path.getsize(output_path) > 0:
@@ -72,6 +73,7 @@ def render_clip_from_local(
     subtitle_style: str = "bold-yellow",
     pos_x: int | None = None,
     pos_y: int | None = None,
+    font_scale: float = 1.0,
 ) -> tuple[str, str, list[dict]]:
     clean_title = re.sub(r"[^a-zA-Z0-9_]", "", title)
     ass_path = os.path.join(output_dir, f"temp_sub_{index}.ass")
@@ -86,6 +88,7 @@ def render_clip_from_local(
         style=subtitle_style,
         pos_x=pos_x,
         pos_y=pos_y,
+        font_scale=font_scale,
     )
 
     has_subtitles = (
@@ -185,10 +188,11 @@ def rerender_clip_subtitles(
     subtitle_style: str = "bold-yellow",
     pos_x: int | None = None,
     pos_y: int | None = None,
+    font_scale: float = 1.0,
 ) -> str:
     """
-    Membakar ulang subtitle hasil edit (teks, timeframe, dan koordinat) ke atas
-    video raw tanpa mengunduh ulang sumber YouTube.
+    Membakar ulang subtitle hasil edit (teks, timeframe, posisi, dan skala font)
+    ke atas video raw tanpa mengunduh ulang sumber YouTube.
     """
     if not os.path.exists(raw_video_path):
         raise FileNotFoundError(f"File video raw tidak ditemukan: {raw_video_path}")
@@ -210,6 +214,7 @@ def rerender_clip_subtitles(
         style=subtitle_style,
         pos_x=pos_x,
         pos_y=pos_y,
+        font_scale=font_scale,
     )
 
     if not has_subtitles:
