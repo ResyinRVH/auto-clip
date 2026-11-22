@@ -34,6 +34,7 @@ def main():
     )
     parser.add_argument("--pos_x", type=int, default=None)
     parser.add_argument("--pos_y", type=int, default=None)
+    parser.add_argument("--font_scale", type=float, default=1.0)
     parser.add_argument("--mode", default="ai", choices=["ai", "interval"])
     parser.add_argument("--interval", type=int, default=2)
     parser.add_argument("--clips", type=int, default=0)
@@ -45,7 +46,6 @@ def main():
     parser.add_argument("--subtitles_json", default="")
 
     args = parser.parse_args()
-
     if args.rerender:
         try:
             if not args.raw_file or not args.output_file:
@@ -69,6 +69,7 @@ def main():
                 subtitle_style=args.subtitle_style,
                 pos_x=args.pos_x,
                 pos_y=args.pos_y,
+                font_scale=args.font_scale,
             )
             print(json.dumps({"success": True, "file": updated_file}))
             return
@@ -133,6 +134,7 @@ def main():
                 subtitle_style=args.subtitle_style,
                 pos_x=args.pos_x,
                 pos_y=args.pos_y,
+                font_scale=args.font_scale,
             )
             results.append(
                 {
