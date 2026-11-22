@@ -10,6 +10,7 @@ import {
   LayoutOption,
   ClipMode,
   ClipResult,
+  SubtitlePosition,
   SubtitleStyleOption,
 } from "@/types/clip";
 
@@ -19,6 +20,10 @@ export default function ClipPage() {
   const [layout, setLayout] = useState<LayoutOption>("splitPotrait");
   const [subtitleStyle, setSubtitleStyle] =
     useState<SubtitleStyleOption>("bold-yellow");
+  const [subtitlePosition, setSubtitlePosition] = useState<SubtitlePosition>({
+    x: 50,
+    y: 50,
+  });
   const [maxClips, setMaxClips] = useState(3);
   const [durationSec, setDurationSec] = useState(60);
   const [intervalMinutes, setIntervalMinutes] = useState(2);
@@ -43,6 +48,8 @@ export default function ClipPage() {
           layout,
           mode,
           subtitleStyle,
+          posX: subtitlePosition.x,
+          posY: subtitlePosition.y,
           intervalMinutes: mode === "interval" ? intervalMinutes : undefined,
           maxClips: mode === "ai" ? maxClips : maxClips || 0,
           maxDuration: durationSec,
@@ -57,7 +64,15 @@ export default function ClipPage() {
       }
 
       if (Array.isArray(data.clips)) {
-        setResults(data.clips);
+        const enrichedClips: ClipResult[] = data.clips.map(
+          (clip: ClipResult) => ({
+            ...clip,
+            subtitleStyle,
+            posX: subtitlePosition.x,
+            posY: subtitlePosition.y,
+          }),
+        );
+        setResults(enrichedClips);
       }
     } catch (err: unknown) {
       setErrorMsg(
@@ -83,6 +98,8 @@ export default function ClipPage() {
         subtitleStyle={subtitleStyle}
         setSubtitleStyle={setSubtitleStyle}
         layout={layout}
+        position={subtitlePosition}
+        setPosition={setSubtitlePosition}
       />
       <ConfigurationClip
         mode={mode}
@@ -100,7 +117,14 @@ export default function ClipPage() {
         </div>
       )}
 
-      <ResultGallery results={results} />
+      <ResultGallery
+        results={results}
+        onUpdateClip={(index, updatedClip) =>
+          setResults((prev) =>
+            prev.map((item, idx) => (idx === index ? updatedClip : item)),
+          )
+        }
+      />
     </div>
   );
 }
